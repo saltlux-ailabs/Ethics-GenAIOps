@@ -1,0 +1,27 @@
+version: "3.8"
+
+networks:
+  goat-attack-evaluation-api-dev-bridge:
+    driver: bridge
+
+services:
+  goat-attack-evaluation-api:
+    image: goat-attack-evaluation-api:1.1.0
+    container_name: goat-attack-evaluation-api
+    networks:
+      - goat-attack-evaluation-api-dev-bridge
+    sysctls:
+      - net.ipv4.ip_local_port_range=10240 65535
+    ports:
+      - "17006:8000"
+    environment:
+      # Leaderboard API 설정
+      - LEADERBOARD_API_URL=https://dev-manage.luxiacloud.com
+      - LEADERBOARD_PASSWORD=slxailabs20251211
+    volumes:
+      - ./:/app/
+      - ./config:/app/config
+      - ./resource:/app/resource
+    logging:
+      options:
+        max-size: 10m

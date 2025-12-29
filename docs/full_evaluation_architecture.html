@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Evaluation Runner - 아키텍처 문서</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .meta-info {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .section h3 {
+            color: var(--gray-800);
+            margin: 1rem 0 0.5rem;
+        }
+
+        /* 탭 네비게이션 */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--gray-200);
+            padding-bottom: 0;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--gray-600);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 플로우차트 스타일 */
+        .flowchart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .flow-node {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 200px;
+            position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .flow-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .flow-node.start {
+            background: var(--gray-800);
+            color: white;
+            border-radius: 24px;
+        }
+
+        .flow-node.process {
+            background: white;
+            border: 2px solid var(--primary);
+            color: var(--gray-800);
+        }
+
+        .flow-node.decision {
+            background: var(--warning);
+            color: white;
+            transform: rotate(0deg);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            padding: 2rem;
+            min-width: 160px;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flow-node.decision:hover {
+            transform: translateY(-2px);
+        }
+
+        .flow-node.phase {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .flow-node.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .flow-node.error {
+            background: var(--error);
+            color: white;
+        }
+
+        .flow-node.api {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .flow-arrow {
+            width: 2px;
+            height: 30px;
+            background: var(--gray-400);
+            position: relative;
+        }
+
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid var(--gray-400);
+        }
+
+        .flow-arrow.branch {
+            display: flex;
+            justify-content: space-between;
+            width: 300px;
+            height: 2px;
+            background: var(--gray-400);
+        }
+
+        .flow-row {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+
+        .flow-branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .branch-label {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin: 0.5rem 0;
+            font-weight: 500;
+        }
+
+        .branch-label.yes {
+            color: var(--success);
+        }
+
+        .branch-label.no {
+            color: var(--error);
+        }
+
+        /* 상태 다이어그램 */
+        .status-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 1.5rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .status-box {
+            padding: 0.75rem 1.25rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .status-box.init { background: var(--gray-200); color: var(--gray-800); }
+        .status-box.running { background: var(--primary); color: white; }
+        .status-box.finished { background: var(--success); color: white; }
+        .status-box.error { background: var(--error); color: white; }
+
+        .status-arrow {
+            color: var(--gray-400);
+            font-size: 1.5rem;
+        }
+
+        /* 컴포넌트 다이어그램 */
+        .component-diagram {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding: 1rem;
+        }
+
+        .component {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .component:hover {
+            border-color: var(--primary);
+        }
+
+        .component h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .component p {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        .component .file {
+            font-family: monospace;
+            background: var(--gray-100);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        /* 데이터 플로우 테이블 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .data-table th, .data-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .data-table th {
+            background: var(--gray-100);
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .data-table tr:hover {
+            background: var(--gray-50);
+        }
+
+        .data-table code {
+            background: var(--gray-100);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        /* 시퀀스 다이어그램 */
+        .sequence {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .sequence-step {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .sequence-step.benchmark {
+            border-left-color: var(--warning);
+        }
+
+        .sequence-step.report {
+            border-left-color: var(--success);
+        }
+
+        .sequence-step.error {
+            border-left-color: var(--error);
+        }
+
+        .step-number {
+            background: var(--gray-800);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content strong {
+            display: block;
+            color: var(--gray-800);
+        }
+
+        .step-content span {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        /* 범례 */
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            padding: 1rem;
+            background: var(--gray-100);
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .flow-row {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .meta-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Full Evaluation Runner</h1>
+            <p>Benchmark와 Report를 순차적으로 실행하는 End-to-End 평가 서비스</p>
+            <div class="meta-info">
+                <span>파일: api/services/full_evaluation_runner.py</span>
+                <span>작성일: 2025-12-29</span>
+                <span>버전: 1.0.0</span>
+            </div>
+        </header>
+
+        <!-- 탭 네비게이션 -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">개요</button>
+            <button class="tab" onclick="showTab('flowchart')">실행 흐름</button>
+            <button class="tab" onclick="showTab('components')">컴포넌트</button>
+            <button class="tab" onclick="showTab('data')">데이터 흐름</button>
+        </div>
+
+        <!-- 개요 탭 -->
+        <div id="overview" class="tab-content active">
+            <div class="section">
+                <h2>서비스 개요</h2>
+                <p>
+                    <strong>FullEvaluationRunner</strong>는 LLM 윤리성 평가를 위한 통합 실행 서비스입니다.
+                    Benchmark(정량 평가)와 Report(정성 평가)를 순차적으로 실행하며,
+                    결과는 Leaderboard API를 통해 저장됩니다.
+                </p>
+
+                <h3>주요 특징</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>비동기 실행 (asyncio 기반)</li>
+                    <li>Benchmark 실패 시 Report 건너뛰기</li>
+                    <li>실시간 상태 업데이트 (Leaderboard API)</li>
+                    <li>CPU-bound 작업은 스레드풀에서 실행</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>상태 전이 다이어그램</h2>
+                <div class="status-diagram">
+                    <div class="status-box init">init</div>
+                    <span class="status-arrow">→</span>
+                    <div class="status-box running">running</div>
+                    <span class="status-arrow">→</span>
+                    <div class="status-box finished">finished</div>
+                </div>
+                <div class="status-diagram" style="margin-top: 1rem;">
+                    <span style="color: var(--gray-600);">실패 시:</span>
+                    <div class="status-box running">running</div>
+                    <span class="status-arrow">→</span>
+                    <div class="status-box error">error</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>실행 단계 (Phase)</h2>
+                <div class="sequence">
+                    <div class="sequence-step">
+                        <div class="step-number">0</div>
+                        <div class="step-content">
+                            <strong>Leaderboard 생성</strong>
+                            <span>초기 상태(init)로 Leaderboard 엔트리 생성</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step benchmark">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <strong>Benchmark 실행</strong>
+                            <span>Toxicity(유해성) + Safety(안전성) 벤치마크 수행</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step report">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <strong>Report 실행</strong>
+                            <span>GOAT 평가: 대화 생성 → 턴별 평가 → 보고서 생성</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <strong>최종 결과 저장</strong>
+                            <span>Leaderboard에 완료 상태(finished) 및 전체 결과 저장</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 실행 흐름 탭 -->
+        <div id="flowchart" class="tab-content">
+            <div class="section">
+                <h2>전체 실행 흐름도</h2>
+                <div class="flowchart">
+                    <div class="flow-node start">run_full_evaluation_async() 시작</div>
+                    <div class="flow-arrow"></div>
+
+                    <div class="flow-node phase">Phase 0: Leaderboard 생성</div>
+                    <div class="flow-arrow"></div>
+
+                    <div class="flow-node api">leaderboard_client.create_leaderboard()</div>
+                    <div class="flow-arrow"></div>
+
+                    <div class="flow-node phase">Phase 1: Benchmark 실행</div>
+                    <div class="flow-arrow"></div>
+
+                    <div class="flow-node process">asyncio.to_thread(_run_benchmark_internal)</div>
+                    <div class="flow-arrow"></div>
+
+                    <div class="flow-node decision" style="margin: 1rem 0;">Benchmark<br>성공?</div>
+
+                    <div class="flow-row" style="margin-top: 1rem;">
+                        <div class="flow-branch">
+                            <div class="branch-label no">실패</div>
+                            <div class="flow-arrow"></div>
+                            <div class="flow-node error">상태: error<br>종료</div>
+                        </div>
+                        <div class="flow-branch">
+                            <div class="branch-label yes">성공</div>
+                            <div class="flow-arrow"></div>
+                            <div class="flow-node phase">Phase 2: Report 실행</div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" style="margin-top: 1rem;"></div>
+
+                    <div class="flow-node process">asyncio.to_thread(_run_report_internal)</div>
+                    <div class="flow-arrow"></div>
+
+                    <div class="flow-node decision" style="margin: 1rem 0;">Report<br>성공?</div>
+
+                    <div class="flow-row" style="margin-top: 1rem;">
+                        <div class="flow-branch">
+                            <div class="branch-label no">실패</div>
+                            <div class="flow-arrow"></div>
+                            <div class="flow-node error">상태: error<br>종료</div>
+                        </div>
+                        <div class="flow-branch">
+                            <div class="branch-label yes">성공</div>
+                            <div class="flow-arrow"></div>
+                            <div class="flow-node phase">Phase 3: 최종 저장</div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" style="margin-top: 1rem;"></div>
+                    <div class="flow-node success">상태: finished<br>완료</div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--gray-800);"></div>
+                        <span>시작/종료</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--primary);"></div>
+                        <span>Phase</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: white; border: 2px solid var(--primary);"></div>
+                        <span>처리</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--warning);"></div>
+                        <span>조건 분기</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #8b5cf6;"></div>
+                        <span>외부 API</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Benchmark 내부 흐름</h2>
+                <p style="margin-bottom: 1rem; color: var(--gray-600);">
+                    _run_benchmark_internal() 메서드는 스레드풀에서 실행됩니다.
+                </p>
+                <div class="sequence">
+                    <div class="sequence-step benchmark">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <strong>API 설정</strong>
+                            <span>configure_api_settings(mode, provider)</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step benchmark">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <strong>프롬프트 로드</strong>
+                            <span>user_toxicity_analysis_system.txt, assistant_toxicity_analysis_system.txt</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step benchmark">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <strong>Toxicity 벤치마크</strong>
+                            <span>난이도별(easy/medium/hard) 병렬 처리 (ThreadPoolExecutor)</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step benchmark">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <strong>Safety 벤치마크</strong>
+                            <span>난이도별(easy/medium/hard) 병렬 처리 (ThreadPoolExecutor)</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step benchmark">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <strong>메트릭 계산</strong>
+                            <span>Accuracy, Precision, Recall, F1 Score</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Report 내부 흐름</h2>
+                <p style="margin-bottom: 1rem; color: var(--gray-600);">
+                    _run_report_internal() 메서드는 GOAT 평가를 수행합니다.
+                </p>
+                <div class="sequence">
+                    <div class="sequence-step report">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <strong>대화 생성</strong>
+                            <span>core_main(max_workers) - 시나리오 기반 대화 생성</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step report">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <strong>대화 변환</strong>
+                            <span>convert_results_to_dialogues(raw_results)</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step report">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <strong>턴별 평가</strong>
+                            <span>evaluate_dialogues(dialogues, context)</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step report">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <strong>보고서 생성</strong>
+                            <span>generate_evaluation_reports() - 개별/전체 리포트</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 컴포넌트 탭 -->
+        <div id="components" class="tab-content">
+            <div class="section">
+                <h2>컴포넌트 의존성</h2>
+                <div class="component-diagram">
+                    <div class="component">
+                        <h4>FullEvaluationRunner</h4>
+                        <p>통합 평가 실행 오케스트레이터</p>
+                        <span class="file">full_evaluation_runner.py</span>
+                    </div>
+                    <div class="component">
+                        <h4>BenchmarkRunner</h4>
+                        <p>Toxicity/Safety 벤치마크 실행</p>
+                        <span class="file">benchmark_runner.py</span>
+                    </div>
+                    <div class="component">
+                        <h4>EvaluationRunner</h4>
+                        <p>GOAT 평가 실행</p>
+                        <span class="file">evaluation_runner.py</span>
+                    </div>
+                    <div class="component">
+                        <h4>LeaderboardClient</h4>
+                        <p>Leaderboard API 통신</p>
+                        <span class="file">leaderboard_client.py</span>
+                    </div>
+                    <div class="component">
+                        <h4>SessionManager</h4>
+                        <p>세션 상태 관리</p>
+                        <span class="file">session_manager.py</span>
+                    </div>
+                    <div class="component">
+                        <h4>core 모듈</h4>
+                        <p>LLM 통신 및 평가 핵심 로직</p>
+                        <span class="file">core/__init__.py</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>주요 메서드</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>메서드</th>
+                            <th>타입</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>run_full_evaluation_async()</code></td>
+                            <td>async</td>
+                            <td>전체 평가 실행 진입점</td>
+                        </tr>
+                        <tr>
+                            <td><code>_run_benchmark_internal()</code></td>
+                            <td>sync</td>
+                            <td>벤치마크 실행 (스레드풀)</td>
+                        </tr>
+                        <tr>
+                            <td><code>_run_report_internal()</code></td>
+                            <td>sync</td>
+                            <td>리포트 생성 (스레드풀)</td>
+                        </tr>
+                        <tr>
+                            <td><code>_create_logger()</code></td>
+                            <td>sync</td>
+                            <td>세션별 로거 생성</td>
+                        </tr>
+                        <tr>
+                            <td><code>_log()</code></td>
+                            <td>sync</td>
+                            <td>구조화된 로깅</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>외부 API 의존성</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>API</th>
+                            <th>엔드포인트</th>
+                            <th>용도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Leaderboard API</td>
+                            <td><code>POST /leaderboards/engine</code></td>
+                            <td>리더보드 생성</td>
+                        </tr>
+                        <tr>
+                            <td>Leaderboard API</td>
+                            <td><code>PUT /leaderboards/{id}</code></td>
+                            <td>상태/결과 업데이트</td>
+                        </tr>
+                        <tr>
+                            <td>LLM API</td>
+                            <td>OpenAI/Custom</td>
+                            <td>평가 수행</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 데이터 흐름 탭 -->
+        <div id="data" class="tab-content">
+            <div class="section">
+                <h2>입력 파라미터</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>파라미터</th>
+                            <th>타입</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>session_id</code></td>
+                            <td>str</td>
+                            <td>세션 식별자</td>
+                        </tr>
+                        <tr>
+                            <td><code>mode</code></td>
+                            <td>str</td>
+                            <td>API 모드 (openai/custom)</td>
+                        </tr>
+                        <tr>
+                            <td><code>provider</code></td>
+                            <td>dict</td>
+                            <td>API 제공자 설정 (api_key, base_url, model 등)</td>
+                        </tr>
+                        <tr>
+                            <td><code>max_workers</code></td>
+                            <td>int</td>
+                            <td>병렬 처리 워커 수</td>
+                        </tr>
+                        <tr>
+                            <td><code>metadata</code></td>
+                            <td>Optional[dict]</td>
+                            <td>사용자 정의 메타데이터</td>
+                        </tr>
+                        <tr>
+                            <td><code>email</code></td>
+                            <td>Optional[str]</td>
+                            <td>사용자 이메일</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>Leaderboard 저장 데이터</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>필드</th>
+                            <th>Phase</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>status</code></td>
+                            <td>전체</td>
+                            <td>init → running → finished/error</td>
+                        </tr>
+                        <tr>
+                            <td><code>benchmark_status</code></td>
+                            <td>Phase 1</td>
+                            <td>init → running → finished/error</td>
+                        </tr>
+                        <tr>
+                            <td><code>benchmark_results</code></td>
+                            <td>Phase 1</td>
+                            <td>toxicity/safety 벤치마크 결과</td>
+                        </tr>
+                        <tr>
+                            <td><code>benchmark_elapsed_time_seconds</code></td>
+                            <td>Phase 1</td>
+                            <td>벤치마크 소요 시간</td>
+                        </tr>
+                        <tr>
+                            <td><code>results</code></td>
+                            <td>Phase 2</td>
+                            <td>생성된 대화 원본</td>
+                        </tr>
+                        <tr>
+                            <td><code>evaluated_dialogues</code></td>
+                            <td>Phase 2</td>
+                            <td>평가된 대화 목록</td>
+                        </tr>
+                        <tr>
+                            <td><code>dialogue_reports</code></td>
+                            <td>Phase 2</td>
+                            <td>개별 대화 리포트</td>
+                        </tr>
+                        <tr>
+                            <td><code>global_report</code></td>
+                            <td>Phase 2</td>
+                            <td>전체 평가 리포트</td>
+                        </tr>
+                        <tr>
+                            <td><code>total_elapsed_time_seconds</code></td>
+                            <td>Phase 3</td>
+                            <td>전체 소요 시간</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>에러 처리</h2>
+                <div class="sequence">
+                    <div class="sequence-step error">
+                        <div class="step-number">!</div>
+                        <div class="step-content">
+                            <strong>Benchmark 실패</strong>
+                            <span>Leaderboard 상태를 error로 업데이트, Report 건너뛰고 종료</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step error">
+                        <div class="step-number">!</div>
+                        <div class="step-content">
+                            <strong>Report 실패</strong>
+                            <span>Leaderboard 상태를 error로 업데이트, benchmark_results는 보존</span>
+                        </div>
+                    </div>
+                    <div class="sequence-step error">
+                        <div class="step-number">!</div>
+                        <div class="step-content">
+                            <strong>예외 발생</strong>
+                            <span>try-except로 전체 래핑, error_message 필드에 상세 정보 저장</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Full Evaluation Runner Architecture Document</p>
+            <p>api-server-v2 | Social Ethics Evaluation System</p>
+        </footer>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            // 모든 탭 버튼 비활성화
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // 모든 탭 콘텐츠 숨기기
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // 선택된 탭 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
